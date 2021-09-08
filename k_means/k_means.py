@@ -1,4 +1,10 @@
+import math
+
 import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
@@ -6,79 +12,93 @@ import numpy as np
 
 class KMeans:
 
-    def __init__(self, K=2, max_iter=1000):
-        # NOTE: Feel free add any hyperparameters 
+    def __init__(self, K=2, max_iter=100):
+        # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
         self.K = K
         self.max_iter = max_iter
-        self.centroids: np.ndarray = None
-        self.old_centroids: np.ndarray = None
-        self.data = None
+        self.samples = None
+        self.centroids = None
         self.centroid_assignments = None
 
-    def _assign_closest_centroid(self):
-        ca = np.repeat(self.data[:, :, np.newaxis], self.K, axis=2)
+    def assign_closest_centroid(self, samples):
+        # assign closest centroid to every data point
+        return np.array([np.argmin(np.square(np.linalg.norm(sample - self.centroids, axis=1))) for sample in samples])
+
+    def init_centroids(self):
+        # randomly initialise centroids
+        idx = np.random.choice(self.samples.shape[0], self.K, replace=False)
+        self.centroids = self.samples[idx]
+
+    def optimise_centroids(self):
+        # optimise centroids
         for k in range(self.K):
-            ca[:, :, k] -= self.centroids[k]
-        ca **= 2
-        ca = ca.sum(axis=1)
-        ca = ca.argmin(axis=1)
-        self.centroid_assignments = ca
+            self.centroids[k] = np.mean(self.samples[np.where(self.centroid_assignments == k)[0]], axis=0)
 
-    def _convergence_criteria_met(self):
-        return (self.centroids == self.old_centroids).all()
-
-    def _optimize_centroids(self):
-        self.old_centroids = self.centroids
-        for k in range(self.K):
-            self.centroids[k] = np.sum([self.data[idx] for idx, i in enumerate(self.centroid_assignments) if i == k], axis=0)
-            self.centroids[k] /= np.count_nonzero(self.centroid_assignments == k)
-
-    def _init_centroids(self):
-        samples_count = self.data.shape[0]
-        self.centroids = np.array([self.data[i] for i in np.random.randint(samples_count, size=self.K)])
 
     def fit(self, X):
         """
         Estimates parameters for the classifier
-        
+
         Args:
             X (array<m,n>): a matrix of floats with
                 m rows (#samples) and n columns (#features)
         """
-        self.data = X.to_numpy()
-        self._init_centroids()
 
+        samples = X.to_numpy()
+
+        # data normalization
+        samples -= samples.mean(axis=0)
+        samples /= samples.std(axis=0)
+        X = pd.DataFrame(samples, columns=['x0', 'x1'])
+        self.samples = samples
+        self.init_centroids()
+
+        # TODO: iterate multiple times to find the optimal centroids
         current_iter = 0
-        while current_iter < self.max_iter and not self._convergence_criteria_met():
-            self._assign_closest_centroid()
-            self._optimize_centroids()
+        while current_iter < self.max_iter:
+            self.centroid_assignments = self.assign_closest_centroid(self.samples)
+            old_centroids = np.copy(self.centroids)
+            self.optimise_centroids()
+            C = self.centroids
+            K = len(C)
+            _, ax = plt.subplots(figsize=(5, 5), dpi=100)
+            sns.scatterplot(x='x0', y='x1', hue=self.centroid_assignments, hue_order=range(K), palette='tab10', data=X, ax=ax)
+            sns.scatterplot(x=C[:, 0], y=C[:, 1], hue=range(K), palette='tab10', marker='*', s=250, edgecolor='black',
+                            ax=ax)
+            ax.legend().remove()
+            plt.show()
+            if np.all(old_centroids == self.centroids):
+                break
             current_iter += 1
+
+
+
+        return self.centroid_assignments
 
     def predict(self, X):
         """
         Generates predictions
-        
+
         Note: should be called after .fit()
-        
+
         Args:
-            X (array<m,n>): a matrix of floats with 
+            X (array<m,n>): a matrix of floats with
                 m rows (#samples) and n columns (#features)
-            
+
         Returns:
             A length m integer array with cluster assignments
-            for each point. E.g., if X is a 10xn matrix and 
+            for each point. E.g., if X is a 10xn matrix and
             there are 3 clusters, then a possible assignment
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
-        self.data = X.to_numpy()
-        self._assign_closest_centroid()
-        return self.centroid_assignments
+
+        return self.assign_closest_centroid(X.to_numpy())
 
     def get_centroids(self):
         """
         Returns the centroids found by the K-mean algorithm
-        
+
         Example with m centroids in an n-dimensional space:
         numpy.array([
             [x1_1, x1_2, ..., x1_n],
@@ -92,19 +112,19 @@ class KMeans:
         return self.centroids
 
 
-# --- Some utility functions 
+# --- Some utility functions
 
 
 def euclidean_distortion(X, z):
     """
     Computes the Euclidean K-means distortion
-    
+
     Args:
-        X (array<m,n>): m x n float matrix with datapoints 
+        X (array<m,n>): m x n float matrix with datapoints
         z (array<m>): m-length integer vector of cluster assignments
-    
+
     Returns:
-        A scalar float with the raw distortion measure 
+        A scalar float with the raw distortion measure
     """
     X, z = np.asarray(X), np.asarray(z)
     assert len(X.shape) == 2
@@ -122,14 +142,14 @@ def euclidean_distortion(X, z):
 
 def euclidean_distance(x, y):
     """
-    Computes euclidean distance between two sets of points 
-    
+    Computes euclidean distance between two sets of points
+
     Note: by passing "y=0.0", it will compute the euclidean norm
-    
+
     Args:
-        x, y (array<...,n>): float tensors with pairs of 
-            n-dimensional points 
-            
+        x, y (array<...,n>): float tensors with pairs of
+            n-dimensional points
+
     Returns:
         A float array of shape <...> with the pairwise distances
         of each x and y point
@@ -139,14 +159,14 @@ def euclidean_distance(x, y):
 
 def cross_euclidean_distance(x, y=None):
     """
-    Compute Euclidean distance between two sets of points 
-    
+    Compute Euclidean distance between two sets of points
+
     Args:
-        x (array<m,d>): float tensor with pairs of 
-            n-dimensional points. 
-        y (array<n,d>): float tensor with pairs of 
+        x (array<m,d>): float tensor with pairs of
+            n-dimensional points.
+        y (array<n,d>): float tensor with pairs of
             n-dimensional points. Uses y=x if y is not given.
-            
+
     Returns:
         A float array of shape <m,n> with the euclidean distances
         from all the points in x to all the points in y
@@ -159,16 +179,16 @@ def cross_euclidean_distance(x, y=None):
 
 def euclidean_silhouette(X, z):
     """
-    Computes the average Silhouette Coefficient with euclidean distance 
-    
+    Computes the average Silhouette Coefficient with euclidean distance
+
     More info:
         - https://www.sciencedirect.com/science/article/pii/0377042787901257
         - https://en.wikipedia.org/wiki/Silhouette_(clustering)
-    
+
     Args:
-        X (array<m,n>): m x n float matrix with datapoints 
+        X (array<m,n>): m x n float matrix with datapoints
         z (array<m>): m-length integer vector of cluster assignments
-    
+
     Returns:
         A scalar float with the silhouette score
     """
@@ -188,9 +208,9 @@ def euclidean_silhouette(X, z):
             div = d.shape[1] - int(i == j)
             D[in_cluster_a, j] = d.sum(axis=1) / np.clip(div, 1, None)
 
-    # Intra distance 
+    # Intra distance
     a = D[np.arange(len(X)), z]
-    # Smallest inter distance 
+    # Smallest inter distance
     inf_mask = np.where(z[:, None] == clusters[None], np.inf, 0)
     b = (D + inf_mask).min(axis=1)
 
