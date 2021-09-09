@@ -12,7 +12,7 @@ import seaborn as sns
 
 class KMeans:
 
-    def __init__(self, K=2, max_iter=100):
+    def __init__(self, K=2, max_iter=50):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
         self.K = K
@@ -21,20 +21,21 @@ class KMeans:
         self.centroids = None
         self.centroid_assignments = None
 
-    def assign_closest_centroid(self, samples):
+    def assign_closest_centroid(self, samples, centroids):
         # assign closest centroid to every data point
-        return np.array([np.argmin(np.square(np.linalg.norm(sample - self.centroids, axis=1))) for sample in samples])
+        return np.array([np.argmin(np.square(np.linalg.norm(sample - centroids, axis=1))) for sample in samples])
 
     def init_centroids(self):
         # randomly initialise centroids
         idx = np.random.choice(self.samples.shape[0], self.K, replace=False)
-        self.centroids = self.samples[idx]
+        return self.samples[idx]
 
-    def optimise_centroids(self):
+    def optimise_centroids(self, centroid_assignments):
         # optimise centroids
+        centroids = np.zeros((self.K, self.samples.shape[1]))
         for k in range(self.K):
-            self.centroids[k] = np.mean(self.samples[np.where(self.centroid_assignments == k)[0]], axis=0)
-
+            centroids[k] = np.mean(self.samples[np.where(centroid_assignments == k)[0]], axis=0)
+        return centroids
 
     def fit(self, X):
         """
@@ -50,29 +51,28 @@ class KMeans:
         # data normalization
         samples -= samples.mean(axis=0)
         samples /= samples.std(axis=0)
-        X = pd.DataFrame(samples, columns=['x0', 'x1'])
         self.samples = samples
-        self.init_centroids()
 
-        # TODO: iterate multiple times to find the optimal centroids
-        current_iter = 0
-        while current_iter < self.max_iter:
-            self.centroid_assignments = self.assign_closest_centroid(self.samples)
-            old_centroids = np.copy(self.centroids)
-            self.optimise_centroids()
-            C = self.centroids
-            K = len(C)
-            _, ax = plt.subplots(figsize=(5, 5), dpi=100)
-            sns.scatterplot(x='x0', y='x1', hue=self.centroid_assignments, hue_order=range(K), palette='tab10', data=X, ax=ax)
-            sns.scatterplot(x=C[:, 0], y=C[:, 1], hue=range(K), palette='tab10', marker='*', s=250, edgecolor='black',
-                            ax=ax)
-            ax.legend().remove()
-            plt.show()
-            if np.all(old_centroids == self.centroids):
-                break
-            current_iter += 1
+        distortion = math.inf
+        for i in range(self.max_iter):
+            centroids = self.init_centroids()
+            centroid_assignments = None
 
+            current_iter = 0
+            while current_iter < 100:
+                centroid_assignments = self.assign_closest_centroid(self.samples, centroids)
+                old_centroids = np.copy(centroids)
+                centroids = self.optimise_centroids(centroid_assignments)
 
+                if np.all(old_centroids == centroids):
+                    break
+                current_iter += 1
+
+            d = euclidean_distortion(self.samples, centroid_assignments)
+            if d < distortion:
+                distortion = d
+                self.centroid_assignments = centroid_assignments
+                self.centroids = centroids
 
         return self.centroid_assignments
 
@@ -93,7 +93,7 @@ class KMeans:
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
 
-        return self.assign_closest_centroid(X.to_numpy())
+        return self.assign_closest_centroid(X.to_numpy(), self.centroids)
 
     def get_centroids(self):
         """
