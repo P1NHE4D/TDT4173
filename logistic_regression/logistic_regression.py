@@ -1,16 +1,31 @@
-import numpy as np 
-import pandas as pd 
+import numpy as np
+import pandas as pd
+
+
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
 
-
 class LogisticRegression:
-    
-    def __init__():
+
+    def __init__(self, lr=0.01, steps=100):
         # NOTE: Feel free add any hyperparameters 
         # (with defaults) as you see fit
-        pass
-        
+        self.train = None
+        self.train_gt = None
+        self.lr = lr
+        self.steps = steps
+        self.weights = None
+
+    def init_weights(self, feature_count):
+        self.weights = np.random.randn(feature_count)
+
+    def update_weights(self):
+        # update weights using gradient ascent
+        # new weights = old_weights + learning_rate * slope
+        for step in range(self.steps):
+            for i, sample in enumerate(self.train):
+                self.weights = self.weights + self.lr * (self.train_gt[i] - sigmoid(sample.dot(self.weights))) * sample
+
     def fit(self, X, y):
         """
         Estimates parameters for the classifier
@@ -21,9 +36,11 @@ class LogisticRegression:
             y (array<m>): a vector of floats containing 
                 m binary 0.0/1.0 labels
         """
-        # TODO: Implement
-        raise NotImplemented()
-    
+        self.train = np.hstack((X, np.ones((X.shape[0], 1))))
+        self.train_gt = y.to_numpy()
+        self.init_weights(self.train.shape[1])
+        self.update_weights()
+
     def predict(self, X):
         """
         Generates predictions
@@ -38,11 +55,10 @@ class LogisticRegression:
             A length m array of floats in the range [0, 1]
             with probability-like predictions
         """
-        # TODO: Implement
-        raise NotImplemented()
-        
+        X = np.hstack((X, np.ones((X.shape[0], 1))))
+        return sigmoid(X.dot(self.weights))
 
-        
+
 # --- Some utility functions 
 
 def binary_accuracy(y_true, y_pred, threshold=0.5):
@@ -58,9 +74,9 @@ def binary_accuracy(y_true, y_pred, threshold=0.5):
     """
     assert y_true.shape == y_pred.shape
     y_pred_thresholded = (y_pred >= threshold).astype(float)
-    correct_predictions = y_pred_thresholded == y_true 
+    correct_predictions = y_pred_thresholded == y_true
     return correct_predictions.mean()
-    
+
 
 def binary_cross_entropy(y_true, y_pred, eps=1e-15):
     """
@@ -76,7 +92,7 @@ def binary_cross_entropy(y_true, y_pred, eps=1e-15):
     assert y_true.shape == y_pred.shape
     y_pred = np.clip(y_pred, eps, 1 - eps)  # Avoid log(0)
     return - np.mean(
-        y_true * np.log(y_pred) + 
+        y_true * np.log(y_pred) +
         (1 - y_true) * (np.log(1 - y_pred))
     )
 
@@ -96,5 +112,3 @@ def sigmoid(x):
         Element-wise sigmoid activations of the input 
     """
     return 1. / (1. + np.exp(-x))
-
-        
