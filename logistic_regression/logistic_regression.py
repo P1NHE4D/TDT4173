@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
@@ -7,23 +6,22 @@ import pandas as pd
 
 class LogisticRegression:
 
-    def __init__(self, lr=0.01, steps=100):
+    def __init__(self, lr=0.1, steps=100):
         # NOTE: Feel free add any hyperparameters 
         # (with defaults) as you see fit
-        self.train = None
+        self.train_data = None
         self.train_gt = None
         self.lr = lr
         self.steps = steps
         self.weights = None
 
     def init_weights(self, feature_count):
-        self.weights = np.random.randn(feature_count)
+        self.weights = np.random.rand(feature_count)
 
-    def update_weights(self):
-        # update weights using gradient ascent
-        # new weights = old_weights + learning_rate * slope
+    def train(self):
         for step in range(self.steps):
-            for i, sample in enumerate(self.train):
+            for i, sample in enumerate(self.train_data):
+                # pred = sigmoid(sample.dot(self.weights))
                 self.weights = self.weights + self.lr * (self.train_gt[i] - sigmoid(sample.dot(self.weights))) * sample
 
     def fit(self, X, y):
@@ -36,10 +34,10 @@ class LogisticRegression:
             y (array<m>): a vector of floats containing 
                 m binary 0.0/1.0 labels
         """
-        self.train = np.hstack((X, np.ones((X.shape[0], 1))))
+        self.train_data = np.hstack((X, np.ones((X.shape[0], 1))))
         self.train_gt = y.to_numpy()
-        self.init_weights(self.train.shape[1])
-        self.update_weights()
+        self.init_weights(self.train_data.shape[1])
+        self.train()
 
     def predict(self, X):
         """
