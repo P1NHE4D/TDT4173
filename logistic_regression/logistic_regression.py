@@ -7,8 +7,12 @@ import numpy as np
 class LogisticRegression:
 
     def __init__(self, lr=0.1, steps=100):
-        # NOTE: Feel free add any hyperparameters 
-        # (with defaults) as you see fit
+        """
+
+        Args:
+            lr: learning rate
+            steps: number of epochs
+        """
         self.train_data = None
         self.train_gt = None
         self.lr = lr
@@ -16,12 +20,18 @@ class LogisticRegression:
         self.weights = None
 
     def init_weights(self, feature_count):
+        """
+        Initialises the weights and the bias to a random real number within [0, 1)
+        """
         self.weights = np.random.rand(feature_count)
 
     def train(self):
+        """
+        Optimises the weights and the bias using stochastic gradient ascent.
+        The number of epochs, i.e., steps is defined by the user.
+        """
         for step in range(self.steps):
             for i, sample in enumerate(self.train_data):
-                # pred = sigmoid(sample.dot(self.weights))
                 self.weights = self.weights + self.lr * (self.train_gt[i] - sigmoid(sample.dot(self.weights))) * sample
 
     def fit(self, X, y):

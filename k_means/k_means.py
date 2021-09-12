@@ -6,6 +6,19 @@ import numpy as np
 # (math, random, collections, functools, etc. are perfectly fine)
 
 
+def assign_closest_centroid(samples, centroids):
+    """
+    Assigns each data point to the closes centroid using the squared l2 norm.
+    Args:
+        samples: (array<m, n>) training samples
+        centroids: (array<K>) centroids
+
+    Returns: (array<m>) vector comprising m integers indicating the centroid assignment
+
+    """
+    return np.array([np.argmin(np.square(np.linalg.norm(sample - centroids, axis=1))) for sample in samples])
+
+
 class KMeans:
 
     def __init__(self, K=2, max_iter=50):
@@ -17,17 +30,28 @@ class KMeans:
         self.centroids = None
         self.centroid_assignments = None
 
-    def assign_closest_centroid(self, samples, centroids):
-        # assign closest centroid to every data point
-        return np.array([np.argmin(np.square(np.linalg.norm(sample - centroids, axis=1))) for sample in samples])
-
     def init_centroids(self):
-        # randomly initialise centroids
+        """
+        Initialises the centroids by randomly picking K data points from the
+        provided training samples.
+
+        Returns: array<K> containing K centroids
+
+        """
         idx = np.random.choice(self.samples.shape[0], self.K, replace=False)
         return self.samples[idx]
 
     def optimise_centroids(self, centroid_assignments):
-        # optimise centroids
+        """
+        Optimises the centroids by computing the mean value based on the
+        data points assigned to each centroid.
+
+        Args:
+            centroid_assignments: array<K> containing the current centroids
+
+        Returns: array<K> comprising the optimised centroids
+
+        """
         centroids = np.zeros((self.K, self.samples.shape[1]))
         for k in range(self.K):
             centroids[k] = np.mean(self.samples[np.where(centroid_assignments == k)[0]], axis=0)
@@ -51,7 +75,7 @@ class KMeans:
 
             current_iter = 0
             while current_iter < 100:
-                centroid_assignments = self.assign_closest_centroid(self.samples, centroids)
+                centroid_assignments = assign_closest_centroid(self.samples, centroids)
                 old_centroids = np.copy(centroids)
                 centroids = self.optimise_centroids(centroid_assignments)
 
@@ -84,7 +108,7 @@ class KMeans:
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
 
-        return self.assign_closest_centroid(X.to_numpy(), self.centroids)
+        return assign_closest_centroid(X.to_numpy(), self.centroids)
 
     def get_centroids(self):
         """
