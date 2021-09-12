@@ -46,14 +46,9 @@ class KMeans:
                 m rows (#samples) and n columns (#features)
         """
 
-        samples = X.to_numpy()
+        self.samples = X.to_numpy()
 
-        # data normalization
-        samples -= samples.mean(axis=0)
-        samples /= samples.std(axis=0)
-        self.samples = samples
-
-        distortion = math.inf
+        min_distortion = math.inf
         for i in range(self.max_iter):
             centroids = self.init_centroids()
             centroid_assignments = None
@@ -68,9 +63,9 @@ class KMeans:
                     break
                 current_iter += 1
 
-            d = euclidean_distortion(self.samples, centroid_assignments)
-            if d < distortion:
-                distortion = d
+            distortion = euclidean_distortion(self.samples, centroid_assignments)
+            if distortion < min_distortion:
+                min_distortion = distortion
                 self.centroid_assignments = centroid_assignments
                 self.centroids = centroids
 
