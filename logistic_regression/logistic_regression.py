@@ -45,7 +45,7 @@ class LogisticRegression:
                 m binary 0.0/1.0 labels
         """
         self.train_data = np.hstack((X, np.ones((X.shape[0], 1))))
-        self.train_gt = y.to_numpy()
+        self.train_gt = y
         self.init_weights(self.train_data.shape[1])
         self.train()
 
